@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BigData Lab — ITMO</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f172a;
+      --surface:  #1e293b;
+      --surface2: #334155;
+      --accent:   #6366f1;
+      --accent2:  #818cf8;
+      --green:    #10b981;
+      --red:      #ef4444;
+      --amber:    #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --border:   #2d3d55;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header .logo {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent2);
+      letter-spacing: -0.5px;
+    }
+    header .logo span { color: var(--text); }
+    header .badge {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .status-bar {
+      margin-left: auto;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+    }
+    .status-pill.active { color: var(--green); background: rgba(16,185,129,.12); }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.green { background: var(--green); }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 60px);
+    }
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: var(--muted);
+      transition: all .15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(99,102,241,.2); color: var(--accent2); }
+    .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-section { font-size: 0.65rem; color: var(--surface2); text-transform: uppercase;
+      letter-spacing: 1px; padding: 1rem 0.75rem 0.3rem; }
+
+    main {
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    /* ── Panels ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .page-sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.75rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Upload zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(99,102,241,.06);
+    }
+    .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .drop-zone p { color: var(--muted); font-size: 0.9rem; }
+    .drop-zone strong { color: var(--text); }
+    #fileInput { display: none; }
+
+    /* ── Progress ── */
+    .progress-wrap {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+      margin-top: 0.75rem;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+      width: 0%;
+      transition: width .3s;
+    }
+
+    /* ── Grid stats ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .stat-card .val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent2);
+    }
+    .stat-card .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th {
+      background: var(--surface2);
+      color: var(--muted);
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.5rem 0.75rem;
+      border-top: 1px solid var(--border);
+      white-space: nowrap;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    tr:hover td { background: var(--surface2); }
+
+    /* ── Forms ── */
+    label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 0.3rem; }
+    select, input[type=range], input[type=number] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      width: 100%;
+      outline: none;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .form-group { display: flex; flex-direction: column; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
+
+    /* ── Viz controls ── */
+    .viz-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 1rem;
+    }
+    .viz-controls .form-group { min-width: 150px; flex: 1; }
+
+    /* ── Metrics ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      text-align: center;
+    }
+    .metric-card .metric-val {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .metric-card .metric-lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Plot ── */
+    .plot-wrap img {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .alert.error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+    .alert.success { background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7; }
+    .alert.info { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Multi-select columns ── */
+    .col-select-wrap {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 160px;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+    .col-select-wrap label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+    .col-select-wrap label:hover { background: var(--surface); }
+    .col-select-wrap input[type=checkbox] { width: auto; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .tag-num { background: rgba(99,102,241,.2); color: var(--accent2); }
+    .tag-cat { background: rgba(245,158,11,.2); color: var(--amber); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Big<span>Data</span> Lab</div>
+  <div class="badge">ITMO · Applied Informatics</div>
+  <div class="status-bar">
+    <div class="status-pill" id="statusData">
+      <div class="dot" id="dotData"></div>
+      <span id="statusDataText">Нет данных</span>
+    </div>
+    <div class="status-pill" id="statusModel">
+      <div class="dot" id="dotModel"></div>
+      <span id="statusModelText">Модель не обучена</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="nav-section">Рабочий процесс</div>
+    <button class="nav-item active" onclick="showPanel('upload', this)">
+      <span class="nav-icon">📂</span> Загрузка данных
+    </button>
+    <button class="nav-item" onclick="showPanel('explore', this)">
+      <span class="nav-icon">🔍</span> Обзор данных
+    </button>
+    <button class="nav-item" onclick="showPanel('visualize', this)">
+      <span class="nav-icon">📊</span> Визуализация
+    </button>
+    <button class="nav-item" onclick="showPanel('train', this)">
+      <span class="nav-icon">🤖</span> Обучение модели
+    </button>
+    <button class="nav-item" onclick="showPanel('results', this)">
+      <span class="nav-icon">📈</span> Результаты
+    </button>
+  </aside>
+
+  <main>
+
+    <!-- ══ UPLOAD ══ -->
+    <div id="panel-upload" class="panel active">
+      <div class="page-title">Загрузка данных</div>
+      <div class="page-sub">Поддерживаются файлы CSV и TSV размером до 500 МБ</div>
+
+      <div class="alert info" id="uploadInfo">Выберите или перетащите файл для начала работы.</div>
+      <div class="alert error" id="uploadError"></div>
+      <div class="alert success" id="uploadSuccess"></div>
+
+      <div class="card">
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="icon">📁</div>
+          <p><strong>Нажмите для выбора файла</strong> или перетащите сюда</p>
+          <p style="margin-top:6px">CSV / TSV · до 500 МБ</p>
+        </div>
+        <input type="file" id="fileInput" accept=".csv,.tsv,.txt" />
+        <div class="progress-wrap" style="margin-top:1rem">
+          <div class="progress-bar" id="uploadProgress"></div>
+        </div>
+      </div>
+
+      <div id="uploadStats" style="display:none">
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="card">
+          <div class="card-title">Превью данных (первые 10 строк)</div>
+          <div class="table-wrap" id="previewTable"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EXPLORE ══ -->
+    <div id="panel-explore" class="panel">
+      <div class="page-title">Обзор данных</div>
+      <div class="page-sub">Типы колонок, пропуски, статистика</div>
+      <div id="exploreContent">
+        <div class="alert info" style="display:block">Сначала загрузите данные.</div>
+      </div>
+    </div>
+
+    <!-- ══ VISUALIZE ══ -->
+    <div id="panel-visualize" class="panel">
+      <div class="page-title">Визуализация</div>
+      <div class="page-sub">Гистограммы, scatter, корреляция, boxplot</div>
+
+      <div class="alert error" id="vizError"></div>
+
+      <div class="card">
+        <div class="card-title">Настройки графика</div>
+        <div class="viz-controls">
+          <div class="form-group">
+            <label>Тип графика</label>
+            <select id="chartType" onchange="updateChartControls()">
+              <option value="histogram">Гистограмма / Bar</option>
+              <option value="scatter">Scatter Plot</option>
+              <option value="correlation">Корреляционная матрица</option>
+              <option value="boxplot">Boxplot</option>
+              <option value="missing">Пропуски</option>
+            </select>
+          </div>
+          <div class="form-group" id="colXGroup">
+            <label>Колонка X</label>
+            <select id="colX"></select>
+          </div>
+          <div class="form-group" id="colYGroup" style="display:none">
+            <label>Колонка Y</label>
+            <select id="colY"></select>
+          </div>
+          <div class="form-group" style="flex:0">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="buildChart()">
+              <span>▶</span> Построить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="plot-wrap" id="vizPlot"></div>
+    </div>
+
+    <!-- ══ TRAIN ══ -->
+    <div id="panel-train" class="panel">
+      <div class="page-title">Обучение модели</div>
+      <div class="page-sub">Выберите целевую переменную, признаки и алгоритм</div>
+
+      <div class="alert error" id="trainError"></div>
+      <div class="alert info" id="trainInfo"></div>
+
+      <div class="card">
+        <div class="card-title">Конфигурация</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Целевая переменная (target)</label>
+            <select id="trainTarget" onchange="updateFeatureList()"></select>
+          </div>
+          <div class="form-group">
+            <label>Алгоритм</label>
+            <select id="trainModel">
+              <option value="auto">Авто (по типу задачи)</option>
+              <option value="logistic">Logistic Regression</option>
+              <option value="random_forest">Random Forest</option>
+              <option value="linear">Linear Regression</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>Размер тестовой выборки: <span id="testSizeLabel">20%</span></label>
+          <input type="range" id="testSize" min="10" max="40" value="20"
+            oninput="document.getElementById('testSizeLabel').textContent=this.value+'%'">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>Признаки (features) — выберите нужные</label>
+          <div class="col-select-wrap" id="featureList"></div>
+        </div>
+        <button class="btn btn-primary" id="trainBtn" onclick="trainModel()">
+          🤖 Обучить модель
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ RESULTS ══ -->
+    <div id="panel-results" class="panel">
+      <div class="page-title">Результаты</div>
+      <div class="page-sub">Метрики качества и визуализация предсказаний</div>
+      <div id="resultsContent">
+        <div class="alert info" style="display:block">Сначала обучите модель.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let globalCols = [];
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  function showPanel(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+  }
+
+  // ── Status bar ─────────────────────────────────────────────────────────────
+  async function refreshStatus() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      if (d.data_loaded) {
+        document.getElementById('statusData').classList.add('active');
+        document.getElementById('dotData').classList.add('green');
+        document.getElementById('statusDataText').textContent = `${d.rows.toLocaleString()} строк`;
+      }
+      if (d.model_trained) {
+        document.getElementById('statusModel').classList.add('active');
+        document.getElementById('dotModel').classList.add('green');
+        document.getElementById('statusModelText').textContent = d.model_type;
+      }
+    } catch(e) {}
+  }
+  refreshStatus();
+
+  // ── File Upload ─────────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  ['dragover','dragenter'].forEach(ev => dropZone.addEventListener(ev, e => {
+    e.preventDefault(); dropZone.classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+  }));
+  dropZone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+  });
+
+  function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideAlerts(...ids) {
+    ids.forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+  }
+
+  async function uploadFile(file) {
+    hideAlerts('uploadError','uploadSuccess');
+    showAlert('uploadInfo', `⏳ Загружаем ${file.name} (${(file.size/1024/1024).toFixed(1)} МБ)…`);
+
+    const bar = document.getElementById('uploadProgress');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Animate progress bar (XHR for progress)
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) bar.style.width = (e.loaded/e.total*100) + '%';
+      };
+      xhr.onload = () => {
+        bar.style.width = '100%';
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status !== 200) {
+            showAlert('uploadError', '❌ ' + data.error);
+            hideAlerts('uploadInfo');
+          } else {
+            hideAlerts('uploadInfo','uploadError');
+            showAlert('uploadSuccess', `✅ Загружено: ${data.rows.toLocaleString()} строк × ${data.cols} столбцов за ${data.load_time_s}с`);
+            renderUploadStats(data);
+            populateColSelects(data.columns, data.dtypes);
+            refreshStatus();
+          }
+        } catch(e) {
+          showAlert('uploadError', '❌ Ошибка разбора ответа');
+        }
+        resolve();
+      };
+      xhr.onerror = () => { showAlert('uploadError','❌ Ошибка сети'); resolve(); };
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    });
+  }
+
+  function renderUploadStats(data) {
+    globalCols = data.columns;
+    const sg = document.getElementById('statGrid');
+    sg.innerHTML = [
+      ['📄', data.rows.toLocaleString(), 'Строк'],
+      ['📋', data.cols, 'Столбцов'],
+      ['💾', data.size_mb + ' МБ', 'Размер'],
+      ['⚡', data.load_time_s + 'с', 'Загрузка'],
+    ].map(([ic, v, l]) => `
+      <div class="stat-card">
+        <div style="font-size:1.5rem">${ic}</div>
+        <div class="val">${v}</div>
+        <div class="lbl">${l}</div>
+      </div>`).join('');
+    document.getElementById('uploadStats').style.display = 'block';
+
+    // Preview table
+    const cols = data.columns;
+    const rows = data.preview;
+    const tableHTML = `
+      <table>
+        <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>`;
+    document.getElementById('previewTable').innerHTML = tableHTML;
+
+    // Explore panel
+    const miss = data.missing;
+    const dtypes = data.dtypes;
+    const exploreRows = cols.map(c => {
+      const isNum = !['object'].includes(dtypes[c]);
+      const tag = isNum
+        ? '<span class="tag tag-num">число</span>'
+        : '<span class="tag tag-cat">категория</span>';
+      const missCount = miss[c] || 0;
+      const missPct = ((missCount / data.rows) * 100).toFixed(1);
+      return `<tr>
+        <td>${c}</td>
+        <td>${dtypes[c]}</td>
+        <td>${tag}</td>
+        <td>${missCount > 0 ? `<span style="color:var(--red)">${missCount} (${missPct}%)</span>` : '<span style="color:var(--green)">0</span>'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('exploreContent').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Колонка</th><th>Dtype</th><th>Тип</th><th>Пропуски</th></tr></thead>
+          <tbody>${exploreRows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function populateColSelects(cols, dtypes) {
+    ['colX','colY','trainTarget'].forEach(id => {
+      const el = document.getElementById(id);
+      el.innerHTML = cols.map(c => `<option value="${c}">${c}</option>`).join('');
+    });
+    updateFeatureList();
+    updateChartControls();
+  }
+
+  // ── Viz ─────────────────────────────────────────────────────────────────────
+  function updateChartControls() {
+    const t = document.getElementById('chartType').value;
+    document.getElementById('colXGroup').style.display =
+      ['histogram','scatter','boxplot'].includes(t) ? '' : 'none';
+    document.getElementById('colYGroup').style.display = t === 'scatter' ? '' : 'none';
+  }
+
+  async function buildChart() {
+    hideAlerts('vizError');
+    const type = document.getElementById('chartType').value;
+    const colX = document.getElementById('colX').value;
+    const colY = document.getElementById('colY').value;
+    document.getElementById('vizPlot').innerHTML =
+      '<div style="color:var(--muted);padding:1rem">⏳ Строим график…</div>';
+    const r = await fetch('/api/visualize', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({chart_type: type, col_x: colX, col_y: colY})
+    });
+    const d = await r.json();
+    if (d.error) {
+      showAlert('vizError', '❌ ' + d.error);
+      document.getElementById('vizPlot').innerHTML = '';
+    } else {
+      document.getElementById('vizPlot').innerHTML =
+        `<img src="data:image/png;base64,${d.image}" style="max-width:100%;border-radius:10px" />`;
+    }
+  }
+
+  // ── Train ───────────────────────────────────────────────────────────────────
+  function updateFeatureList() {
+    const target = document.getElementById('trainTarget').value;
+    const wrap = document.getElementById('featureList');
+    wrap.innerHTML = globalCols
+      .filter(c => c !== target)
+      .map(c => `
+        <label>
+          <input type="checkbox" value="${c}" checked />
+          ${c}
+        </label>`).join('');
+  }
+
+  async function trainModel() {
+    hideAlerts('trainError','trainInfo');
+    const target = document.getElementById('trainTarget').value;
+    const modelName = document.getElementById('trainModel').value;
+    const testSize = document.getElementById('testSize').value / 100;
+    const features = [...document.querySelectorAll('#featureList input:checked')]
+      .map(cb => cb.value);
+
+    if (!features.length) {
+      showAlert('trainError', '❌ Выберите хотя бы один признак'); return;
+    }
+
+    const btn = document.getElementById('trainBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Обучаем…';
+    showAlert('trainInfo', '⏳ Обучение модели, подождите…');
+
+    const r = await fetch('/api/train', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({target, features, model: modelName, test_size: testSize})
+    });
+    const d = await r.json();
+    btn.disabled = false;
+    btn.innerHTML = '🤖 Обучить модель';
+    hideAlerts('trainInfo');
+
+    if (d.error) {
+      showAlert('trainError', '❌ ' + d.error);
+    } else {
+      showAlert('trainInfo', `✅ Модель обучена за ${d.train_time_s}с`);
+      renderResults(d);
+      refreshStatus();
+    }
+  }
+
+  // ── Results ─────────────────────────────────────────────────────────────────
+  function renderResults(d) {
+    let metricsHTML = '';
+    if (d.task === 'regression') {
+      metricsHTML = `
+        <div class="metric-card"><div class="metric-val">${d.r2}</div><div class="metric-lbl">R²</div></div>
+        <div class="metric-card"><div class="metric-val">${d.rmse}</div><div class="metric-lbl">RMSE</div></div>
+        <div class="metric-card"><div class="metric-val">${d.mse}</div><div class="metric-lbl">MSE</div></div>`;
+    } else {
+      metricsHTML = `
+        <div class="metric-card"><div class="metric-val">${(d.accuracy*100).toFixed(1)}%</div><div class="metric-lbl">Accuracy</div></div>
+        <div class="metric-card"><div class="metric-val">${(d.f1_macro*100).toFixed(1)}%</div><div class="metric-lbl">F1 macro</div></div>
+        <div class="metric-card"><div class="metric-val">${(d.precision*100).toFixed(1)}%</div><div class="metric-lbl">Precision</div></div>
+        <div class="metric-card"><div class="metric-val">${(d.recall*100).toFixed(1)}%</div><div class="metric-lbl">Recall</div></div>`;
+    }
+
+    const plotsHTML = [
+      d.plot ? `<div class="card"><div class="card-title">График предсказаний</div>
+        <div class="plot-wrap"><img src="data:image/png;base64,${d.plot}"/></div></div>` : '',
+      d.importance_plot ? `<div class="card"><div class="card-title">Важность признаков</div>
+        <div class="plot-wrap"><img src="data:image/png;base64,${d.importance_plot}"/></div></div>` : '',
+    ].join('');
+
+    document.getElementById('resultsContent').innerHTML = `
+      <div class="card">
+        <div class="card-title">Модель: ${d.model}</div>
+        <div class="metrics-grid">${metricsHTML}</div>
+        <div style="font-size:0.8rem;color:var(--muted)">
+          Train: ${d.train_samples} · Test: ${d.test_samples} · Время: ${d.train_time_s}с
+        </div>
+      </div>
+      ${plotsHTML}`;
+
+    // Switch to results tab
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-item')[4].classList.add('active');
+    showPanel('results', null);
+  }
+</script>
+</body>
+</html>
