@@ -230,7 +230,7 @@ def train():
     # Encode categoricals in features
     encoders = {}
     for col in features:
-        if df_work[col].dtype == object:
+        if df_work[col].dtype == object or df_work[col].apply(lambda x: isinstance(x, str)).any():
             le = LabelEncoder()
             df_work[col] = le.fit_transform(df_work[col].astype(str))
             encoders[col] = le

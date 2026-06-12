@@ -523,6 +523,16 @@
         <button class="btn btn-primary" id="trainBtn" onclick="trainModel()">
           🤖 Обучить модель
         </button>
+
+        <div id="trainProgress" style="display:none; margin-top:1rem">
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:0.4rem">
+            <span id="trainStepLabel">Подготовка данных...</span>
+            <span id="trainPct">0%</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar" id="trainBar"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -753,7 +763,34 @@
     const btn = document.getElementById('trainBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Обучаем…';
-    showAlert('trainInfo', '⏳ Обучение модели, подождите…');
+
+    // Показываем прогресс-бар
+    const progressWrap = document.getElementById('trainProgress');
+    const bar = document.getElementById('trainBar');
+    const label = document.getElementById('trainStepLabel');
+    const pct = document.getElementById('trainPct');
+    progressWrap.style.display = 'block';
+    bar.style.width = '0%';
+
+    const steps = [
+      [10, 'Подготовка данных...'],
+      [25, 'Кодирование признаков...'],
+      [45, 'Масштабирование...'],
+      [60, 'Разбивка train/test...'],
+      [80, 'Обучение модели...'],
+      [95, 'Вычисление метрик...'],
+    ];
+
+    let stepIndex = 0;
+    const interval = setInterval(() => {
+      if (stepIndex < steps.length) {
+        const [p, text] = steps[stepIndex];
+        bar.style.width = p + '%';
+        label.textContent = text;
+        pct.textContent = p + '%';
+        stepIndex++;
+      }
+    }, 400);
 
     const r = await fetch('/api/train', {
       method: 'POST',
@@ -761,6 +798,17 @@
       body: JSON.stringify({target, features, model: modelName, test_size: testSize})
     });
     const d = await r.json();
+
+    clearInterval(interval);
+    bar.style.width = '100%';
+    label.textContent = 'Готово!';
+    pct.textContent = '100%';
+
+    setTimeout(() => {
+      progressWrap.style.display = 'none';
+      bar.style.width = '0%';
+    }, 1500);
+
     btn.disabled = false;
     btn.innerHTML = '🤖 Обучить модель';
     hideAlerts('trainInfo');
